@@ -42,7 +42,7 @@ function donutTest() {
 function someTest() {
   let toban = createTobanDonut(["apple,ringo", "あいうえお", "おっぱい"]);
   console.log(toban);
-  revolveDonutEveryWeek(false, 2, toban);
+  revolveDonutEveryWeek(false, 3, toban);
 }
 
 
@@ -90,9 +90,10 @@ function revolveDonutEveryWeek(off, day, toban) {
   }
 
   let date = new Date();
-  console.log(date.getDay(), day, toban.get());
+  let toban_of_the_week = toban.get()
+  console.log(date.getDay(), day, toban_of_the_week);
   if (date.getDay() === day) {
-    postMessage(toban.get());
+    postMessage(toban_of_the_week);
   }
 }
 
