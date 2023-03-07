@@ -1,12 +1,10 @@
 /*
 * <TODO>----------------------------------------
-* イベントを受け取れるかのテスト
-* テスト勉強しろ
+* ちゃんと動くかデプロイしてテスト
 * ----------------------------------------------
 */
 
 
-//今は直書きしているけれども、まあなんとかして避けたほうが良いとは思うよ。しゃーないけど。
 const TOKEN = 'Y1CQZL9Ger42ZpnTNVIJuyocShFylSQWDpI4KPoX2y12NsTFKHANvl5MevawFyJ+8N6KJy6wMrs7iVlsKpuQBOhHiFFelQ6djKgj+t9hDtPWv3vfy5ztVhW4b743TX1uBBnk199SVhyKuLGtYOInaQdB04t89/1O/w1cDnyilFU='
 const USERID = 'U2343bb5925201db9a812443839edec52'
 
@@ -29,7 +27,6 @@ class Donut {
 }
 
 
-//donutのテストコード
 function donutTest() {
   a = new Donut("hogehoge", "apple", "foo", "bar");
   for (let i = 0; i < a.length; i++) {
@@ -46,12 +43,17 @@ function someTest() {
 }
 
 
+const OFF_FLAG = false;
+const DAY = 0;
+const TOBAN_NOW = undefined;
+
+
 function main() {
-  //GAS側でこいつを実行する
+  revolveDonutEveryWeek(OFF_FLAG, DAY, TOBAN_NOW);
 }
 
 
-//なんかイベントが受け取れるらしい。仕組みがよくわからん。
+//LINEのAPIがイベントを受け取ったら実行される
 function doPost(e) {
   const event = JSON.parse(e.postData.contents).events[0];
   const replyToken = event.replyToken;
@@ -68,7 +70,7 @@ function doPost(e) {
 }
 
 
-function execute(text) {
+function execute(text, replyToken) {
   if (text === undefined) {
     return;
   }
@@ -79,13 +81,16 @@ function execute(text) {
 
   if (command === "!set") {
     createTobanDonut(contents)
+  } else if (command === "!cat") {
+    postMessage(
+      { type: "text", text: String(TOBAN_NOW)}
+    );
   }
 }
 
 
 function revolveDonutEveryWeek(off, day, toban) {
   if (off === true || toban === undefined) {
-    console.log("error");
     return;
   }
 
@@ -93,7 +98,9 @@ function revolveDonutEveryWeek(off, day, toban) {
   let toban_of_the_week = toban.get()
   console.log(date.getDay(), day, toban_of_the_week);
   if (date.getDay() === day) {
-    postMessage(toban_of_the_week);
+    postMessage(
+      { type: 'text', text: `今週の当番は\n${toban_of_the_week.join("\n")}\nです。` }
+    );
   }
 }
 
@@ -104,18 +111,20 @@ function createTobanDonut(contents) {
     const toban = names.split(",");
     donut.add(toban);
   }
-  return donut;
+  TOBAN_NOW = donut;
 }
 
 
-function postMessage(toban) {
+function postMessage(message) {
   const url = 'https://api.line.me/v2/bot/message/push';
+
+  if (typeof toban === "undefined") {
+    return;
+  }
 
   const payload = {
     to: USERID,
-    messages: [
-      { type: 'text', text: `今週の当番は\n${toban.join("\n")}\nです。` }
-    ]
+    messages: [message]
   };
 
   const params = {
