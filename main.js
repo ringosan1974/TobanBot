@@ -1,67 +1,52 @@
 /*
 * <TODO>----------------------------------------
 * ちゃんと動くかデプロイしてテスト
+* 当番のプッシュメッセージのフォーマットの修正
 * ----------------------------------------------
 */
 
-
-const TOKEN = 'Y1CQZL9Ger42ZpnTNVIJuyocShFylSQWDpI4KPoX2y12NsTFKHANvl5MevawFyJ+8N6KJy6wMrs7iVlsKpuQBOhHiFFelQ6djKgj+t9hDtPWv3vfy5ztVhW4b743TX1uBBnk199SVhyKuLGtYOInaQdB04t89/1O/w1cDnyilFU='
-const USERID = 'U2343bb5925201db9a812443839edec52'
-
-
-class Donut {
-  constructor(...args) {
-    this.donut = args;
-    this.length = args.length;
-  }
-
-  get() {
-    const elem = this.donut.shift();
-    this.donut.push(elem);
-    return elem;
-  }
-
-  add(elem) {
-    this.donut.push(elem)
-  }
-}
-
-
-function donutTest() {
-  a = new Donut("hogehoge", "apple", "foo", "bar");
-  for (let i = 0; i < a.length; i++) {
-    console.log(a);
-    console.log(a.get());
-  }
-}
-
-
-function someTest() {
-  let toban = createTobanDonut(["apple,ringo", "あいうえお", "おっぱい"]);
-  console.log(toban);
-  revolveDonutEveryWeek(false, 3, toban);
-}
-
-
-const OFF_FLAG = false;
+const sheet = SpreadsheetApp.getActiveSheet();
+const TOKEN = sheet.getRange("A1").getValue();
+const USERID = sheet.getRange("A2").getValue();
+const ONOFF = sheet.getRange("B1").getValue();
 const DAY = 0;
-const TOBAN_NOW = undefined;
+var TOBAN_ALL = []
+for (var i = 1; !sheet.getRange(3, i).isBlank(); i++) {
+  TOBAN_ALL.push(sheet.getRange(3, i).getValue());
+}
+var TOBAN_NOW = sheet.getRange("A3").getValue();
 
 
 function main() {
-  revolveDonutEveryWeek(OFF_FLAG, DAY, TOBAN_NOW);
+  revolveDonutEveryWeek(DAY);
 }
 
 
-//LINEのAPIがイベントを受け取ったら実行される
+function revolveDonutEveryWeek(day) {
+  if (ONOFF === "OFF") {
+    // 何もしない
+  } else if (TOBAN_ALL.length === 0) {
+    postMessage(
+      { type: "text", text: "当番が指定されていません。"}
+    );
+  } else {
+    let date = new Date();
+    if (date.getDay() === day) {
+      const temp = TOBAN_ALL.shift();
+      TOBAN_ALL.push(temp);
+      createTobanSS(TOBAN_ALL);
+      TOBAN_NOW = sheet.getRange("A3").getValue();
+      postMessage(
+        { type: 'text', text: `今週の当番は\n${TOBAN_NOW}\nです。` }
+      );
+    }
+  }
+}
+
+
 function doPost(e) {
   const event = JSON.parse(e.postData.contents).events[0];
-  const replyToken = event.replyToken;
-
-  if (typeof replyToken === "undefined") {
-    return;
-  }
-
+  
   if(event.type === "message") {
     if(event.message.type === "text") {
       execute(event.message.text);
@@ -70,57 +55,56 @@ function doPost(e) {
 }
 
 
-function execute(text, replyToken) {
+function execute(text) {
   if (text === undefined) {
     return;
   }
 
   const elems = text.split("\n");
   const command = elems[0];
-  const contents = elems.slice(1);
+  const humans = elems.slice(1);
 
   if (command === "!set") {
-    createTobanDonut(contents)
-  } else if (command === "!cat") {
+    if (TOBAN_ALL.length !== 0) {
+      deleteTobanSS(TOBAN_ALL);
+    }
+    createTobanSS(humans);
     postMessage(
-      { type: "text", text: String(TOBAN_NOW)}
+      { type: "text", text: "セットしました。"}
+    );
+
+  } else if (command === "!on") {
+    sheet.getRange("B1").setValue("ON");
+    postMessage(
+      { type: "text", text: "ON!"}
+    );
+
+  } else if (command === "!off") {
+    sheet.getRange("B1").setValue("OFF");
+    postMessage(
+      { type: "text", text: "OFF!"}
+    );
+
+  } else if (command === "!status") {
+    postMessage(
+      { type: "text", text: `OnOffStatus: ${ONOFF}\n現在の当番: ${TOBAN_NOW}\n\n↓当番リスト↓\n${TOBAN_ALL.join("\n")}`}
     );
   }
 }
 
 
-function revolveDonutEveryWeek(off, day, toban) {
-  if (off === true || toban === undefined) {
-    return;
-  }
-
-  let date = new Date();
-  let toban_of_the_week = toban.get()
-  console.log(date.getDay(), day, toban_of_the_week);
-  if (date.getDay() === day) {
-    postMessage(
-      { type: 'text', text: `今週の当番は\n${toban_of_the_week.join("\n")}\nです。` }
-    );
-  }
+function createTobanSS(contents) {
+  sheet.getRange(3,1,1,contents.length).setValues([contents]);
 }
 
 
-function createTobanDonut(contents) {
-  let donut = new Donut();
-  for (const names of contents) {
-    const toban = names.split(",");
-    donut.add(toban);
-  }
-  TOBAN_NOW = donut;
+function deleteTobanSS(contents) {
+  sheet.getRange(3,1,1,contents.length).clear();
 }
 
 
 function postMessage(message) {
   const url = 'https://api.line.me/v2/bot/message/push';
-
-  if (typeof toban === "undefined") {
-    return;
-  }
 
   const payload = {
     to: USERID,
