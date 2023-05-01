@@ -1,13 +1,7 @@
-/*
-* <TODO>----------------------------------------
-* ちゃんと動くかデプロイしてテスト
-* 当番のプッシュメッセージのフォーマットの修正
-* ----------------------------------------------
-*/
-
 const sheet = SpreadsheetApp.getActiveSheet();
 const TOKEN = sheet.getRange("A1").getValue();
 const USERID = sheet.getRange("A2").getValue();
+const GID = sheet.getRange("B2").getValue();
 const ONOFF = sheet.getRange("B1").getValue();
 const DAY = 0;
 var TOBAN_ALL = []
@@ -46,6 +40,7 @@ function revolveDonutEveryWeek(day) {
 
 function doPost(e) {
   const event = JSON.parse(e.postData.contents).events[0];
+  sheet.getRange("B2").setValue(event.source.groupId);
   
   if(event.type === "message") {
     if(event.message.type === "text") {
@@ -107,7 +102,7 @@ function postMessage(message) {
   const url = 'https://api.line.me/v2/bot/message/push';
 
   const payload = {
-    to: USERID,
+    to: GID,
     messages: [message]
   };
 
